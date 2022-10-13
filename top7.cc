@@ -2,6 +2,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include "testing.h"
 
 using std::unordered_set;
 using std::unordered_map;
@@ -15,9 +16,16 @@ using points_t = uint32_t;
 using rejected_t = unordered_set<song_num_t>;
 using charts_t = unordered_map<song_num_t, votes_t>;
 using top_t = unordered_map<song_num_t, points_t>;
+using vote_t = vector<votes_t>;
 
-// Write votes in chart
-static void vote(const vector<votes_t> &vote, charts_t &chart);
+static const song_num_t MaxSongNumber = 99999999;
+
+// Write votes in chart, does not check if vote vector is valid!
+static void vote(const vote_t &vote, charts_t &chart) {
+    for (votes_t i : vote) {
+
+    }
+}
 
 // Write out top7 songs from chart, reject some songs, and
 // reset chart.
