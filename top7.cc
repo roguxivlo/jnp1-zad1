@@ -1,85 +1,148 @@
 #include <iostream>
+#include <sstream>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
 // #include "testing.hpp"
 
+using std::string;
+using std::stringstream;
 using std::unordered_set;
 using std::unordered_map;
 using std::vector;
 
-// Język zmiennych itd. można zawsze zmienić na polski jeśli tak wolisz
+using std::cin;
+using std::cout;
+using std::cerr;
+
+using line_t = string;
+using line_number_t = uint64_t;
+
 using song_num_t = uint32_t;
-using votes_t = uint32_t;
 using points_t = uint32_t;
 
 using rejected_t = unordered_set<song_num_t>;
-using charts_t = unordered_map<song_num_t, votes_t>;
+using charts_t = unordered_map<song_num_t, song_num_t>;
 using top_t = unordered_map<song_num_t, points_t>;
-using vote_t = vector<votes_t>;
+using vote_list_t = vector<song_num_t>;
 
-static const song_num_t MaxSongNumber = 999;
+static const song_num_t maxTestSongNumber = 999;
 
-// Write votes in chart, does not check if vote vector is valid!
-void vote(const vote_t &vote, charts_t &chart) {
-    for (votes_t i : vote) {
-        chart[i]++;
+namespace {
+    constexpr song_num_t max_song_number = 99999999;
+    song_num_t current_max_song = 0;
+
+    charts_t current_chart;
+    top_t top_songs;
+    rejected_t rejected_songs;
+
+    line_number_t line_number = 0;
+    line_t line;
+
+    song_num_t last_chart[7], last_top_call[7];
+}
+
+
+void wrong_line() {
+    cerr << "Error in line " << line_number << ": " << line;
+}
+
+
+// Write votes in chart and checks for correctness
+void vote(const vote_list_t &votes) {
+    for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
+}
+
+// Write out top 7 songs from chart, reject some songs, and reset chart.
+static void summarize() {
+
+}
+
+static void top() {
+
+}
+
+void parse() {
+    stringstream ss;
+    if (line.starts_with("NEW")) {
+        string temp;
+        song_num_t maximum;
+        ss >> temp; // reads NEW
+        ss >> maximum; // reads max song number
+        if (ss >> temp || maximum > max_song_number) { // something more...
+            wrong_line();
+            return;
+        }
+        current_max_song = maximum;
+        summarize();
+
+    } else if (line.starts_with("TOP")) {
+        string temp;
+        ss >> temp; // reads TOP
+        if (ss >> temp) { // something more...
+            wrong_line();
+            return;
+        }
+        top();
+
+    } else {
+        vote_list_t votes;
+        song_num_t song;
+        while (ss >> song) {
+            if (song == 0 || song > current_max_song ||
+                rejected_songs.contains(song)) {
+                wrong_line();
+                return;
+            }
+            votes.emplace_back(song);
+        }
+        vote(votes);
     }
 }
 
-// Write out top7 songs from chart, reject some songs, and
-// reset chart.
-static void summarise(charts_t &chart, rejected_t &rejectedSongs);
-
-static void top(const top_t &topSongsOfAllTime);
-
-
 /*TESTING*/
-vote_t randomVote(const size_t size) {
-    srand(time(NULL));
-
-    vote_t result(size);
+vote_list_t random_vote(const size_t size) {
+    vote_list_t result(size);
     for (size_t i = 0; i < size; ++i) {
-        result[i] = rand() % MaxSongNumber + 1;
+        result[i] = random() % maxTestSongNumber + 1;
     }
 
     return result;
 }
 
-void printChart(const charts_t &map) {
-    for (auto i = map.begin(); i != map.end(); ++i) {
-        std::cout<<"("<<i->first<<": "<<i->second<<")\t";
+void print_chart() {
+    for (const auto &i: current_chart) {
+        cout << "(" << i.first << ": " << i.second << ")\t";
     }
-    std::cout<<"\n";
+    cout << "\n";
 }
 
-void printVote(const vote_t &v) {
-    for (uint32_t i : v) {
-        std::cout<<i<<"\t";
+void print_vote(const vote_list_t &votes) {
+    for (auto v: votes) {
+        cout << v << "\t";
     }
-    std::cout<<"\n";
+    cout << "\n";
 }
-
 
 
 int main() {
-    /*
-     * coś tam
-     */
-    srand(time(NULL));
-    
+    while (getline(cin, line)) {
+        ++line_number;
+        parse();
+    }
+
     //Test funkcji vote:
     int numberOfTests = 10;
-    vote_t tmp;
-    charts_t tmpMap;
-    for (int i = 0; i < numberOfTests; ++i) {
-        tmp = randomVote((size_t) (rand() % 20 + 1));
-        vote(tmp, tmpMap);
-        printVote(tmp);
-    }
-    printChart(tmpMap);
-    //koniec testu vote
+    srandom(time(nullptr));
 
+    for (int i = 0; i < numberOfTests; ++i) {
+        auto tmp = random_vote(static_cast<size_t>(random() % 20 + 1));
+        vote(tmp);
+        print_vote(tmp);
+    }
+
+    print_chart();
+    //koniec testu vote
 
     return 0;
 }
