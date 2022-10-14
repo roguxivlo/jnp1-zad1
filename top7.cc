@@ -3,13 +3,17 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
-// #include "testing.hpp"
+#include <algorithm>
+#include <string>
 
 using std::string;
 using std::stringstream;
 using std::unordered_set;
 using std::unordered_map;
 using std::vector;
+using std::for_each;
+using std::pair;
+
 
 using std::cin;
 using std::cout;
@@ -20,14 +24,17 @@ using line_number_t = uint64_t;
 
 using song_num_t = uint32_t;
 using points_t = uint32_t;
+using change_t = int8_t;
+using song_vote_t = uint32_t;
 
 using rejected_t = unordered_set<song_num_t>;
-using charts_t = unordered_map<song_num_t, song_num_t>;
+using charts_t = unordered_map<song_num_t, song_vote_t>;
 using top_t = unordered_map<song_num_t, points_t>;
 using vote_list_t = vector<song_num_t>;
 
 static const song_num_t maxTestSongNumber = 999;
 
+// Global variables
 namespace {
     constexpr song_num_t max_song_number = 99999999;
     song_num_t current_max_song = 0;
@@ -53,12 +60,32 @@ void vote(const vote_list_t &votes) {
     for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
 }
 
+void writeTop7(const vector<pair<song_num_t, change_t>> &top7);
+
+bool cmp(pair<song_num_t, song_vote_t> a, pair<song_num_t, song_vote_t> b) {
+    // sort descending by second attribute, then ascending by
+    // first attribute:
+    if (a.second > b.second) return true;
+    else {
+        return a.first < b.first;
+    }
+}
+
 // Write out top 7 songs from chart, reject some songs, and reset chart.
-static void summarize() {
+void summarize() {
+    // Sort current_chart elements:
+    vector<pair<song_num_t, song_vote_t>> songVotes;
+    for (auto& it : current_chart) {
+        songVotes.push_back(it);
+    }
+    sort(songVotes.begin(), songVotes.end(), cmp);
+
+    
 
 }
 
-static void top() {
+// 
+void top() {
 
 }
 
