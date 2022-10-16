@@ -1,24 +1,30 @@
 #include <iostream>
 #include <sstream>
+#include <set>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
 #include <string>
 
+
 using std::string;
 using std::stringstream;
+using std::set;
 using std::unordered_set;
 using std::unordered_map;
 using std::vector;
 using std::for_each;
 using std::pair;
+using std::make_pair;
 
 
 using std::cin;
 using std::cout;
 using std::cerr;
 
+
+/* Type definitions */
 using line_t = string;
 using line_number_t = uint64_t;
 
@@ -31,11 +37,16 @@ using rejected_t = unordered_set<song_num_t>;
 using charts_t = unordered_map<song_num_t, song_vote_t>;
 using top_t = unordered_map<song_num_t, points_t>;
 using vote_list_t = vector<song_num_t>;
+// using top_songs_t = set<>
 
-static const song_num_t maxTestSongNumber = 999;
 
-// Global variables
+// Test constant
+static const song_num_t maxTestSongNumber = 9;
+
+
+/* Global variables */
 namespace {
+    constexpr size_t ranking_length = 7;
     constexpr song_num_t max_song_number = 99999999;
     song_num_t current_max_song = 0;
 
@@ -46,47 +57,134 @@ namespace {
     line_number_t line_number = 0;
     line_t line;
 
-    song_num_t last_chart[7], last_top_call[7];
+    vector<song_num_t> last_chart, last_top_call;
+
+    struct cmp {
+        bool operator() (const pair<song_vote_t, song_num_t> &a,
+            const pair<song_vote_t, song_num_t> &b) 
+            const {
+                return (a.first > b.first ||
+                        (!(b.first > a.first) && (a.second < b.second)));
+        }
+    };
 }
 
 
-void wrong_line() {
-    cerr << "Error in line " << line_number << ": " << line;
+/* TESTING */
+vote_list_t random_vote(const size_t size) {
+    vote_list_t result(size);
+    for (size_t i = 0; i < size; ++i) {
+        result[i] = random() % maxTestSongNumber + 1;
+    }
+
+    return result;
+}
+
+void print_chart() {
+    cout << "Printing chart:\n";
+    for (const auto &i: current_chart) {
+        cout << "(" << i.first << ": " << i.second << ")\t";
+    }
+    cout << "\n";
+}
+
+void print_vote(const vote_list_t &votes) {
+    for (auto v: votes) {
+        cout << v << "\t";
+    }
+    cout << "\n";
 }
 
 
+/* Writing output */
+void writeTop7(const set<pair<song_vote_t, song_num_t>, cmp> &bestSongs) {
+    int currentRank = 1, previousRank;
+
+    for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
+        auto iter = std::find(last_chart.begin(), last_chart.end(), it->second);
+        if (iter != last_chart.end()) {
+            previousRank = iter - last_chart.begin();
+            cout << it->second << " " << previousRank - currentRank << "\n";
+        }
+        else {
+            cout << it->second << " -\n";
+        }
+        currentRank++;
+    }
+}
+
+
+
+/* Algorithms */
 // Write votes in chart and checks for correctness
 void vote(const vote_list_t &votes) {
     for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
 }
 
-void writeTop7(const vector<pair<song_num_t, change_t>> &top7);
-
-bool cmp(pair<song_num_t, song_vote_t> a, pair<song_num_t, song_vote_t> b) {
-    // sort descending by second attribute, then ascending by
-    // first attribute:
-    if (a.second > b.second) return true;
-    else {
-        return a.first < b.first;
+// debug
+void print_set(const set<pair<song_vote_t, song_num_t>, cmp> &S) {
+    cout << "Printing set:\n";
+    for (auto it = S.begin(); it != S.end(); ++it) {
+        cout << "(" << it->second << ": " << it->first << ") ";
     }
+    cout << "\n";
 }
+// ~debug
 
 // Write out top 7 songs from chart, reject some songs, and reset chart.
 void summarize() {
-    // Sort current_chart elements:
-    vector<pair<song_num_t, song_vote_t>> songVotes;
-    for (auto& it : current_chart) {
-        songVotes.push_back(it);
+    if (current_max_song > 0) {
+        // Get top7 songs from current_chart using std::set.
+        set<pair<song_vote_t, song_num_t>, cmp> bestSongs;
+
+        for (auto const& [song, votes] : current_chart) {
+            bestSongs.insert(std::make_pair(votes, song));
+            if (bestSongs.size() > ranking_length) {
+                bestSongs.erase(bestSongs.begin());
+            }
+        }
+        
+        // testing:
+        print_set(bestSongs);
+        // ~testing
+
+        // Write out top 7 songs from chart.
+        writeTop7(bestSongs);
+        
+        // Update top_songs.
+        points_t points = ranking_length;
+        for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
+            top_songs[it->second] += points;
+            points--;
+        }
+
+        // Reject some songs.
+        for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
+            if (std::find(last_chart.begin(), last_chart.end(), it->second) == last_chart.end()) {
+                rejected_songs.insert(it->second);
+            }
+        }
+
+        // Reset the chart.
+        current_chart.clear();
+
+        // Update last_chart.
+        last_chart.clear();
+        for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
+            last_chart.push_back(it->second);
+        }
     }
-    sort(songVotes.begin(), songVotes.end(), cmp);
-
-    
-
 }
 
 // 
 void top() {
 
+}
+
+
+/* Input parsing */
+void wrong_line() {
+    cerr << "Error in line " << line_number << ": " << line;
 }
 
 void parse() {
@@ -127,29 +225,6 @@ void parse() {
     }
 }
 
-/*TESTING*/
-vote_list_t random_vote(const size_t size) {
-    vote_list_t result(size);
-    for (size_t i = 0; i < size; ++i) {
-        result[i] = random() % maxTestSongNumber + 1;
-    }
-
-    return result;
-}
-
-void print_chart() {
-    for (const auto &i: current_chart) {
-        cout << "(" << i.first << ": " << i.second << ")\t";
-    }
-    cout << "\n";
-}
-
-void print_vote(const vote_list_t &votes) {
-    for (auto v: votes) {
-        cout << v << "\t";
-    }
-    cout << "\n";
-}
 
 
 int main() {
@@ -159,17 +234,22 @@ int main() {
     }
 
     //Test funkcji vote:
-    int numberOfTests = 10;
+    int numberOfTests = 5;
     srandom(time(nullptr));
 
     for (int i = 0; i < numberOfTests; ++i) {
-        auto tmp = random_vote(static_cast<size_t>(random() % 20 + 1));
+        auto tmp = random_vote(static_cast<size_t>(random() % 3 + 1));
         vote(tmp);
         print_vote(tmp);
     }
 
     print_chart();
     //koniec testu vote
+
+    // test funkcji summarize:
+    summarize();
+
+    // koniec testu summarize.
 
     return 0;
 }
