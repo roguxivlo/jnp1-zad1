@@ -41,7 +41,7 @@ using vote_list_t = vector<song_num_t>;
 
 
 // Test constant
-static const song_num_t maxTestSongNumber = 9;
+static const song_num_t maxTestSongNumber = 9999;
 
 
 /* Global variables */
@@ -63,8 +63,10 @@ namespace {
         bool operator() (const pair<song_vote_t, song_num_t> &a,
             const pair<song_vote_t, song_num_t> &b) 
             const {
-                return (a.first > b.first ||
-                        (!(b.first > a.first) && (a.second < b.second)));
+                if (a.first > b.first) return true;
+                if (a.first < b.first) return false;
+                if (a.second < b.second) return true;
+                return false;
         }
     };
 }
@@ -89,6 +91,7 @@ void print_chart() {
 }
 
 void print_vote(const vote_list_t &votes) {
+    cout<<"\nPrinting vote:\n";
     for (auto v: votes) {
         cout << v << "\t";
     }
@@ -103,7 +106,7 @@ void writeTop7(const set<pair<song_vote_t, song_num_t>, cmp> &bestSongs) {
     for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
         auto iter = std::find(last_chart.begin(), last_chart.end(), it->second);
         if (iter != last_chart.end()) {
-            previousRank = iter - last_chart.begin();
+            previousRank = iter - last_chart.begin() + 1;
             cout << it->second << " " << previousRank - currentRank << "\n";
         }
         else {
@@ -119,6 +122,8 @@ void writeTop7(const set<pair<song_vote_t, song_num_t>, cmp> &bestSongs) {
 // Write votes in chart and checks for correctness
 void vote(const vote_list_t &votes) {
     for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
+    // print_vote(votes);
+    // print_chart();
 }
 
 // debug
@@ -140,12 +145,12 @@ void summarize() {
         for (auto const& [song, votes] : current_chart) {
             bestSongs.insert(std::make_pair(votes, song));
             if (bestSongs.size() > ranking_length) {
-                bestSongs.erase(bestSongs.begin());
+                bestSongs.erase((--bestSongs.end()));
             }
         }
         
         // testing:
-        print_set(bestSongs);
+        // print_set(bestSongs);
         // ~testing
 
         // Write out top 7 songs from chart.
@@ -234,11 +239,11 @@ int main() {
     }
 
     //Test funkcji vote:
-    int numberOfTests = 5;
+    int numberOfTests = 10;
     srandom(time(nullptr));
 
     for (int i = 0; i < numberOfTests; ++i) {
-        auto tmp = random_vote(static_cast<size_t>(random() % 3 + 1));
+        auto tmp = random_vote(static_cast<size_t>(random() % 20 + 1));
         vote(tmp);
         print_vote(tmp);
     }
@@ -251,5 +256,69 @@ int main() {
 
     // koniec testu summarize.
 
+
+    /* TEST NEW, VOTE: */
+    cout<<"\nTESTING NEW, VOTE\n";
+    current_max_song = 10;
+    vector <song_num_t> tab[7];
+    tab[0] = {1,2,3};
+    tab[1] = {2,3,4};
+    tab[2] = {3,4,5,6};
+    tab[3] = {4,5,6,7};
+    tab[4] = {6,9};
+    tab[5] = {6,10};
+    tab[6] = {6,8};
+
+    for (int i = 0; i < 7; ++i) {
+        vote(tab[i]);
+    }
+    summarize();
+
+    current_max_song = 11;
+
+    tab[0] = {6};
+    tab[1] = {4,6,8};
+    tab[2] = {8,6,4};
+    tab[3] = {1,2,3,6};
+    tab[4] = {6,5};
+    tab[5] = {6};
+    for (int i = 0; i < 6; ++i) {
+        vote(tab[i]);
+    }
+    summarize();
+
+    tab[0] = {11};
+    vote(tab[0]);
+    tab[1] = {1,2,3,4,5,11};
+    vote(tab[1]);
+    summarize();
+    tab[0] = {7}; vote(tab[0]); summarize();
     return 0;
 }
+
+
+/* dane do testu napisanego w main:
+
+NEW 10
+1 2 3
+2 3 4
+3 4 5 6
+4 5 6 7
+6 9
+6 10
+6 8
+11
+NEW 11
+6
+4 6 8
+8 6 4
+1 2 3 6
+6 5
+6
+NEW 11
+11
+1 2 3 4 5 11
+NEW 11
+7
+
+*/
