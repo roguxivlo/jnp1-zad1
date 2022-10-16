@@ -60,7 +60,7 @@ namespace {
     line_t line;
 
     vector<song_num_t> last_chart(ranking_length), last_top_call(ranking_length);
-    bool open_voting = false;
+    bool open_voting = false, after_first_chart = false;
 
     bool cmp(const chart_elem_t &a, const chart_elem_t &b) {
         return a.second > b.second || (a.second == b.second && a.first < b.first);
@@ -97,7 +97,9 @@ void print_vote(const vote_list_t &votes) {
 void write_top7(const chart_list_t &top7) {
     // top7 zawiera tylko i wyłącznie 7 piosenek ze zmianami pozycji
     for (auto &[song, change] : top7) {
-        cout << song << " " << (change == new_song ? "-" : std::to_string(change)) << "\n";
+        if (song != 0) {
+            cout << song << " " << (change == new_song ? "-" : std::to_string(change)) << "\n";
+        }
     }
 }
 
@@ -143,28 +145,36 @@ void summarize() {
     // clear current chart
     current_chart.clear();
     // reject some songs
-    for (auto song : last_chart) {
-        bool seen = false;
-        for (const auto &[song2, y] : changes) {
-            if (song == song2) {
-                seen = true;
-                break;
+    if (after_first_chart) {
+        for (auto song: last_chart) {
+            bool seen = false;
+            for (const auto &[song2, y]: changes) {
+                if (song == song2) {
+                    seen = true;
+                    break;
+                }
+            }
+            if (!seen) {
+                rejected_songs.emplace(song);
             }
         }
-        if (!seen) {
-            rejected_songs.emplace(song);
-        }
-    }
+    } else after_first_chart = true;
     // add points to top7 and remember this chart and add points to top 7
-    for (auto k = 0; i < ranking_length; ++i) {
+    for (auto k = 0; k < ranking_length; ++k) {
         last_chart[k] = changes[k].first;
     }
 
-    for (auto &[song, pts] : top_songs) {
-        for (auto k = 0; k < ranking_length; ++k) {
+    for (auto k = 0; k < ranking_length; ++k) {
+        bool added = false;
+        for (auto &[song, pts]: top_songs) {
             if (song == last_chart[k]) {
                 pts += ranking_length - k;
+                added = true;
+                break;
             }
+        }
+        if (!added) {
+            top_songs.emplace_back(last_chart[k], ranking_length - k);
         }
     }
 
