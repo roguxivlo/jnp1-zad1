@@ -16,9 +16,11 @@ using std::vector;
 using std::cin;
 using std::cout;
 using std::cerr;
+using std::for_each;
 using std::make_pair;
 using std::sort;
 using std::partial_sort;
+using std::to_string;
 
 
 /* Type definitions */
@@ -37,8 +39,7 @@ using chart_list_t = vector<pair<song_num_t, change_t>>;
 
 using top_elem_t = pair<song_num_t, points_t>;
 using top_t = vector<top_elem_t>;
-using rejected_t = unordered_set<song_num_t>;
-// using top_songs_t = set<>
+using song_set_t = unordered_set<song_num_t>;
 
 
 // Test constant
@@ -54,7 +55,7 @@ namespace {
 
     charts_t current_chart;
     top_t top_songs;
-    rejected_t rejected_songs;
+    song_set_t rejected_songs;
 
     line_number_t line_number = 0;
     line_t line;
@@ -98,7 +99,8 @@ void write_top7(const chart_list_t &top7) {
     // top7 zawiera tylko i wyłącznie 7 piosenek ze zmianami pozycji
     for (auto &[song, change] : top7) {
         if (song != 0) {
-            cout << song << " " << (change == new_song ? "-" : std::to_string(change)) << "\n";
+            cout << song << " " << (change == new_song ? "-" : to_string(change))
+                 << "\n";
         }
     }
 }
@@ -106,7 +108,7 @@ void write_top7(const chart_list_t &top7) {
 
 /* Algorithms */
 // Write votes in chart
-void vote(const vote_list_t &votes) {
+void vote(const song_set_t &votes) {
     for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
 }
 
@@ -206,15 +208,15 @@ void wrong_line() {
 }
 
 void cast_votes(stringstream &ss) {
-    vote_list_t votes;
+    song_set_t votes;
     song_num_t song;
     while (ss >> song) {
         if (song == 0 || song > current_max_song ||
-            rejected_songs.contains(song)) {
+            rejected_songs.contains(song) || votes.contains(song)) {
             wrong_line();
             return;
         }
-        votes.emplace_back(song);
+        votes.emplace(song);
     }
     vote(votes);
 }
@@ -224,8 +226,9 @@ void new_charts(stringstream &ss) {
     song_num_t maximum;
     ss >> temp; // reads NEW
     ss >> maximum; // reads max song number
-    if (ss >> temp || maximum > max_song_number) { // something more or
-        // song number is too large
+    if (ss >> temp || temp != "NEW" || maximum == 0 ||
+        maximum < current_max_song || maximum > max_song_number) {
+        // something more or song number is too large
         wrong_line();
     } else {
         if (open_voting) {
@@ -239,7 +242,7 @@ void new_charts(stringstream &ss) {
 void write_top_songs(stringstream &ss) {
     string temp;
     ss >> temp; // reads TOP
-    if (ss >> temp) { // something more...
+    if (ss >> temp || temp != "TOP") { // something more...
         wrong_line();
     } else {
         top();
@@ -262,10 +265,11 @@ void parse() {
 
 
 int main() {
-    while (getline(cin, line)) {
+    while (getline(cin, line)) { // odczyta i przemieli jeśli jest EOF w linii
         parse();
     }
 
+    /*
     //Test funkcji vote:
     int numberOfTests = 5;
     srandom(time(nullptr));
@@ -283,6 +287,7 @@ int main() {
     summarize();
 
     // koniec testu summarize.
+     */
 
     return 0;
 }
