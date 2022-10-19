@@ -33,7 +33,7 @@ using points_t = uint32_t;
 using change_t = int8_t;
 using song_vote_t = uint32_t;
 
-using rejected_t = unordered_set<song_num_t>;
+using song_set_t = unordered_set<song_num_t>;
 using charts_t = unordered_map<song_num_t, song_vote_t>;
 using top_t = unordered_map<song_num_t, points_t>;
 using vote_list_t = vector<song_num_t>;
@@ -52,12 +52,14 @@ namespace {
 
     charts_t current_chart;
     top_t top_songs;
-    rejected_t rejected_songs;
+    song_set_t rejected_songs;
 
     line_number_t line_number = 0;
     line_t line;
 
     vector<song_num_t> last_chart, last_top_call;
+
+    bool open_voting = false, after_first_chart = false;
 
     struct cmp {
         bool operator() (const pair<song_vote_t, song_num_t> &a,
@@ -86,6 +88,14 @@ void print_chart() {
     cout << "Printing chart:\n";
     for (const auto &i: current_chart) {
         cout << "(" << i.first << ": " << i.second << ")\t";
+    }
+    cout << "\n";
+}
+
+void print_chart_last() {
+    cout << "Printing lasst chart:\n";
+    for (const auto &i: last_chart) {
+        cout << "(" << i << ")\t";
     }
     cout << "\n";
 }
@@ -120,7 +130,7 @@ void writeTop7(const set<pair<song_vote_t, song_num_t>, cmp> &bestSongs, const v
 
 /* Algorithms */
 // Write votes in chart and checks for correctness
-void vote(const vote_list_t &votes) {
+void vote(const song_set_t &votes) {
     for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
     // print_vote(votes);
     // print_chart();
@@ -131,6 +141,14 @@ void print_set(const set<pair<song_vote_t, song_num_t>, cmp> &S) {
     cout << "Printing set:\n";
     for (auto it = S.begin(); it != S.end(); ++it) {
         cout << "(" << it->second << ": " << it->first << ") ";
+    }
+    cout << "\n";
+}
+
+void print_song_set(const song_set_t &S) {
+    cout << "Printing song set:\n";
+    for (auto it = S.begin(); it != S.end(); ++it) {
+        cout << "(" << *it << ") ";
     }
     cout << "\n";
 }
@@ -155,6 +173,8 @@ void summarize() {
 
         // Write out top 7 songs from chart.
         writeTop7(bestSongs, last_chart);
+
+        // print_chart_last();
         
         // Update top_songs.
         points_t points = ranking_length;
@@ -164,11 +184,17 @@ void summarize() {
         }
 
         // Reject some songs.
+        unordered_set<song_num_t> bestSongsUS;
         for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
-            if (std::find(last_chart.begin(), last_chart.end(), it->second) == last_chart.end()) {
-                rejected_songs.insert(it->second);
+            bestSongsUS.emplace(it->second);
+        }
+        for (auto it = last_chart.begin(); it != last_chart.end(); ++it) {
+            if (!bestSongsUS.contains(*it)) {
+                rejected_songs.insert(*it);
             }
         }
+
+        // print_song_set(rejected_songs);
 
         // Reset the chart.
         current_chart.clear();
@@ -211,54 +237,114 @@ void top() {
 
 /* Input parsing */
 void wrong_line() {
-    cerr << "Error in line " << line_number << ": " << line;
+    cerr << "Error in line " << line_number << ": " << line << "\n";
+}
+
+void cast_votes(stringstream &ss) {
+    song_set_t votes;
+    song_num_t song;
+    while (ss >> song) {
+        if (song == 0 || song > current_max_song ||
+            rejected_songs.contains(song) || votes.contains(song)) {
+            // cout << "Cast votes error: ";
+            wrong_line();
+            // print_song_set(rejected_songs);
+            // cout << "song: " << song << " current_max_song: " << current_max_song << "\n";
+            return;
+        }
+        votes.emplace(song);
+    }
+    vote(votes);
+}
+
+void new_charts(stringstream &ss) {
+    string temp;
+    song_num_t maximum;
+    ss >> temp; // reads NEW
+    ss >> maximum; // reads max song number
+    if (ss >> temp || temp != "NEW" || maximum == 0 ||
+        maximum < current_max_song || maximum > max_song_number) {
+        // something more or song number is too large
+        wrong_line();
+    } else {
+        if (open_voting) {
+            summarize();
+        }
+        // cout << "updated current_max_song: from " << current_max_song;
+        current_max_song = maximum;
+        // cout << " to: " << current_max_song << "\n";
+        open_voting = true;
+    }
+}
+
+void write_top_songs(stringstream &ss) {
+    string temp;
+    ss >> temp; // reads TOP
+    if (ss >> temp || temp != "TOP") { // something more...
+        wrong_line();
+    } else {
+        top();
+    }
 }
 
 void parse() {
-    stringstream ss;
+    stringstream ss(line);
     if (line.starts_with("NEW")) {
-        string temp;
-        song_num_t maximum;
-        ss >> temp; // reads NEW
-        ss >> maximum; // reads max song number
-        if (ss >> temp || maximum > max_song_number) { // something more...
-            wrong_line();
-            return;
-        }
-        current_max_song = maximum;
-        summarize();
-
+        new_charts(ss);
     } else if (line.starts_with("TOP")) {
-        string temp;
-        ss >> temp; // reads TOP
-        if (ss >> temp) { // something more...
-            wrong_line();
-            return;
-        }
-        top();
-
+        write_top_songs(ss);
+    } else if (!open_voting) { // no NEW before votes were cast
+        wrong_line();
     } else {
-        vote_list_t votes;
-        song_num_t song;
-        while (ss >> song) {
-            if (song == 0 || song > current_max_song ||
-                rejected_songs.contains(song)) {
-                wrong_line();
-                return;
-            }
-            votes.emplace_back(song);
-        }
-        vote(votes);
+        cast_votes(ss);
     }
 }
+
+// void parse() {
+//     stringstream ss;
+//     if (line.starts_with("NEW")) {
+//         string temp;
+//         song_num_t maximum;
+//         ss >> temp; // reads NEW
+//         ss >> maximum; // reads max song number
+//         if (ss >> temp || maximum > max_song_number) { // something more...
+//             wrong_line();
+//             return;
+//         }
+//         current_max_song = maximum;
+//         summarize();
+
+//     } else if (line.starts_with("TOP")) {
+//         string temp;
+//         ss >> temp; // reads TOP
+//         if (ss >> temp) { // something more...
+//             wrong_line();
+//             return;
+//         }
+//         top();
+
+//     } else {
+//         vote_list_t votes;
+//         song_num_t song;
+//         while (ss >> song) {
+//             if (song == 0 || song > current_max_song ||
+//                 rejected_songs.contains(song)) {
+//                 wrong_line();
+//                 return;
+//             }
+//             votes.emplace_back(song);
+//         }
+//         vote(votes);
+//     }
+// }
 
 
 
 int main() {
-    // while (getline(cin, line)) {
-    //     ++line_number;
-    //     parse();
-    // }
+    while (getline(cin, line)) {
+        ++line_number;
+        parse();
+    }
 
     // //Test funkcji vote:
     // int numberOfTests = 10;
@@ -280,43 +366,43 @@ int main() {
 
 
     /* TEST Algorithms: */
-    cout<<"\nTESTING Algorithms\n";
-    current_max_song = 10;
-    vector <song_num_t> tab[7];
-    tab[0] = {1,2,3};
-    tab[1] = {2,3,4};
-    tab[2] = {3,4,5,6};
-    tab[3] = {4,5,6,7};
-    tab[4] = {6,9};
-    tab[5] = {6,10};
-    tab[6] = {6,8};
+    // cout<<"\nTESTING Algorithms\n";
+    // current_max_song = 10;
+    // vector <song_num_t> tab[7];
+    // tab[0] = {1,2,3};
+    // tab[1] = {2,3,4};
+    // tab[2] = {3,4,5,6};
+    // tab[3] = {4,5,6,7};
+    // tab[4] = {6,9};
+    // tab[5] = {6,10};
+    // tab[6] = {6,8};
 
-    for (int i = 0; i < 7; ++i) {
-        vote(tab[i]);
-    }
-    summarize();
+    // for (int i = 0; i < 7; ++i) {
+    //     vote(tab[i]);
+    // }
+    // summarize();
 
-    current_max_song = 11;
+    // current_max_song = 11;
 
-    tab[0] = {6};
-    tab[1] = {4,6,8};
-    tab[2] = {8,6,4};
-    tab[3] = {1,2,3,6};
-    tab[4] = {6,5};
-    tab[5] = {6};
-    for (int i = 0; i < 6; ++i) {
-        vote(tab[i]);
-    }
-    summarize();
+    // tab[0] = {6};
+    // tab[1] = {4,6,8};
+    // tab[2] = {8,6,4};
+    // tab[3] = {1,2,3,6};
+    // tab[4] = {6,5};
+    // tab[5] = {6};
+    // for (int i = 0; i < 6; ++i) {
+    //     vote(tab[i]);
+    // }
+    // summarize();
 
-    tab[0] = {11};
-    vote(tab[0]);
-    top();
-    tab[1] = {1,2,3,4,5,11};
-    vote(tab[1]);
-    summarize();
-    top();
-    // tab[0] = {7}; vote(tab[0]); summarize();
+    // tab[0] = {11};
+    // vote(tab[0]);
+    // top();
+    // tab[1] = {1,2,3,4,5,11};
+    // vote(tab[1]);
+    // summarize();
+    // top();
+    // // tab[0] = {7}; vote(tab[0]); summarize();
     return 0;
 }
 
