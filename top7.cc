@@ -100,13 +100,13 @@ void print_vote(const vote_list_t &votes) {
 
 
 /* Writing output */
-void writeTop7(const set<pair<song_vote_t, song_num_t>, cmp> &bestSongs) {
+void writeTop7(const set<pair<song_vote_t, song_num_t>, cmp> &bestSongs, const vector<song_num_t> &last) {
     int currentRank = 1, previousRank;
 
     for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
-        auto iter = std::find(last_chart.begin(), last_chart.end(), it->second);
-        if (iter != last_chart.end()) {
-            previousRank = iter - last_chart.begin() + 1;
+        auto iter = std::find(last.begin(), last.end(), it->second);
+        if (iter != last.end()) {
+            previousRank = iter - last.begin() + 1;
             cout << it->second << " " << previousRank - currentRank << "\n";
         }
         else {
@@ -154,7 +154,7 @@ void summarize() {
         // ~testing
 
         // Write out top 7 songs from chart.
-        writeTop7(bestSongs);
+        writeTop7(bestSongs, last_chart);
         
         // Update top_songs.
         points_t points = ranking_length;
@@ -183,6 +183,28 @@ void summarize() {
 
 // 
 void top() {
+    // Get top7 songs from top_songs usinng std::set.
+    set<pair<song_num_t, points_t>, cmp> bestSongs;
+     for (auto const& [song, points] : top_songs) {
+        bestSongs.insert(std::make_pair(points, song));
+        if (bestSongs.size() > ranking_length) {
+            bestSongs.erase((--bestSongs.end()));
+        }
+    }
+
+    // Write top songs:
+    writeTop7(bestSongs, last_top_call);
+
+    // Update last_top_call:
+    last_top_call.clear();
+    for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
+        last_top_call.push_back(it->second);
+    }
+
+
+    // reject from top_songs rejected songs which have not made it
+    // to the top7 rankingm since they will never be in top7 again.
+    // Do przemyślenia: czy powyższe oczyszczanie poprawi złożoność?
 
 }
 
@@ -233,32 +255,32 @@ void parse() {
 
 
 int main() {
-    while (getline(cin, line)) {
-        ++line_number;
-        parse();
-    }
+    // while (getline(cin, line)) {
+    //     ++line_number;
+    //     parse();
+    // }
 
-    //Test funkcji vote:
-    int numberOfTests = 10;
-    srandom(time(nullptr));
+    // //Test funkcji vote:
+    // int numberOfTests = 10;
+    // srandom(time(nullptr));
 
-    for (int i = 0; i < numberOfTests; ++i) {
-        auto tmp = random_vote(static_cast<size_t>(random() % 20 + 1));
-        vote(tmp);
-        print_vote(tmp);
-    }
+    // for (int i = 0; i < numberOfTests; ++i) {
+    //     auto tmp = random_vote(static_cast<size_t>(random() % 20 + 1));
+    //     vote(tmp);
+    //     print_vote(tmp);
+    // }
 
-    print_chart();
-    //koniec testu vote
+    // print_chart();
+    // //koniec testu vote
 
-    // test funkcji summarize:
-    summarize();
+    // // test funkcji summarize:
+    // summarize();
 
     // koniec testu summarize.
 
 
-    /* TEST NEW, VOTE: */
-    cout<<"\nTESTING NEW, VOTE\n";
+    /* TEST Algorithms: */
+    cout<<"\nTESTING Algorithms\n";
     current_max_song = 10;
     vector <song_num_t> tab[7];
     tab[0] = {1,2,3};
@@ -289,10 +311,12 @@ int main() {
 
     tab[0] = {11};
     vote(tab[0]);
+    top();
     tab[1] = {1,2,3,4,5,11};
     vote(tab[1]);
     summarize();
-    tab[0] = {7}; vote(tab[0]); summarize();
+    top();
+    // tab[0] = {7}; vote(tab[0]); summarize();
     return 0;
 }
 
@@ -307,7 +331,6 @@ NEW 10
 6 9
 6 10
 6 8
-11
 NEW 11
 6
 4 6 8
@@ -317,8 +340,9 @@ NEW 11
 6
 NEW 11
 11
+TOP
 1 2 3 4 5 11
 NEW 11
-7
+TOP
 
 */
