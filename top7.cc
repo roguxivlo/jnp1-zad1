@@ -8,16 +8,18 @@
 #include <string>
 
 
+using std::pair;
 using std::string;
 using std::stringstream;
 using std::set;
 using std::unordered_set;
 using std::unordered_map;
 using std::vector;
-using std::for_each;
-using std::pair;
-using std::make_pair;
 
+using std::all_of;
+using std::for_each;
+using std::make_pair;
+using std::numeric_limits;
 
 using std::cin;
 using std::cout;
@@ -240,30 +242,38 @@ void wrong_line() {
     cerr << "Error in line " << line_number << ": " << line << "\n";
 }
 
-void cast_votes(stringstream &ss) {
-    song_set_t votes;
-    song_num_t song;
-    while (ss >> song) {
-        if (song == 0 || song > current_max_song ||
-            rejected_songs.contains(song) || votes.contains(song)) {
-            // cout << "Cast votes error: ";
+void cast_votes() {
+    if (!open_voting) {
+        wrong_line();
+    } else {
+        stringstream ss(line);
+        song_set_t votes;
+        song_num_t song;
+        while (ss >> song) {
+            if (song == 0 || song > current_max_song ||
+                rejected_songs.contains(song) || votes.contains(song)) {
+                // cout << "Cast votes error: ";
+                wrong_line();
+                // print_song_set(rejected_songs);
+                // cout << "song: " << song << " current_max_song: " << current_max_song << "\n";
+                return;
+            }
+            votes.emplace(song);
+        }
+        if (song == 0 || song == numeric_limits<song_num_t>::max()) {
             wrong_line();
-            // print_song_set(rejected_songs);
-            // cout << "song: " << song << " current_max_song: " << current_max_song << "\n";
             return;
         }
-        votes.emplace(song);
+        vote(votes);
     }
-    vote(votes);
 }
 
 void new_charts(stringstream &ss) {
     string temp;
     song_num_t maximum;
-    ss >> temp; // reads NEW
     ss >> maximum; // reads max song number
-    if (ss >> temp || temp != "NEW" || maximum == 0 ||
-        maximum < current_max_song || maximum > max_song_number) {
+    if (ss >> temp || maximum == 0 || maximum < current_max_song ||
+        maximum > max_song_number) {
         // something more or song number is too large
         wrong_line();
     } else {
@@ -279,8 +289,7 @@ void new_charts(stringstream &ss) {
 
 void write_top_songs(stringstream &ss) {
     string temp;
-    ss >> temp; // reads TOP
-    if (ss >> temp || temp != "TOP") { // something more...
+    if (ss >> temp) { // something more...
         wrong_line();
     } else {
         top();
@@ -289,14 +298,14 @@ void write_top_songs(stringstream &ss) {
 
 void parse() {
     stringstream ss(line);
-    if (line.starts_with("NEW")) {
+    string word;
+    ss >> word;
+    if (word == "NEW") {
         new_charts(ss);
-    } else if (line.starts_with("TOP")) {
+    } else if (word == "TOP") {
         write_top_songs(ss);
-    } else if (!open_voting) { // no NEW before votes were cast
-        wrong_line();
-    } else {
-        cast_votes(ss);
+    } else if (!all_of(line.begin(), line.end(), isspace)) {
+        cast_votes();
     }
 }
 
