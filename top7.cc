@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <limits>
 
 using std::pair;
 using std::string;
@@ -160,6 +161,26 @@ void top() {
     // Jak będzie dużo notowań z różnymi utworami to w top_songs będzie
     // bardzo dużo elementów, więc z uwagi na tworzenie bestSongs za każdym
     // razem przy wywołaniu TOP - tak
+
+    vector<song_num_t> bestSongsVec;
+    for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
+        bestSongsVec.push_back(it->first);
+    }
+
+    for (auto it = top_songs.begin(); it != top_songs.end();) {
+        if (rejected_songs.contains(it->first)) {
+            auto iter = find(bestSongsVec.begin(), bestSongsVec.end(), it->first);
+            if (iter == bestSongsVec.end()) {
+                it = top_songs.erase(it);
+            }
+            else {
+                it++;
+            }
+        }
+        else {
+            it++;
+        }
+    }
 }
 
 
