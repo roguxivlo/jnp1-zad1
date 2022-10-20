@@ -133,38 +133,33 @@ void summarize() {
     }
 }
 
-// 
+// Gets all-time top7 charts hits
 void top() {
-    // Get top7 songs from top_songs using set.
-    set<top_elem_t, cmp> bestSongs;
+    // Get top7 songs from top_songs using set
+    set<top_elem_t, cmp> best_songs;
     for (const auto &[song, points]: top_songs) {
-        bestSongs.emplace(song, points);
-        if (bestSongs.size() > ranking_length) {
-            bestSongs.erase((--bestSongs.end()));
+        best_songs.emplace(song, points);
+        if (best_songs.size() > ranking_length) {
+            best_songs.erase((--best_songs.end()));
         }
     }
 
-    // Write top songs:
-    writeTop7(bestSongs, last_top_call);
+    // Write top songs
+    writeTop7(best_songs, last_top_call);
 
-    // Update last_top_call:
+    // Update last_top_call array
     last_top_call.clear();
-    for (const auto &[song, pts]: bestSongs) {
+    for (const auto &[song, pts]: best_songs) {
         last_top_call.emplace_back(song);
     }
 
-    // reject from top_songs rejected songs which have not made it
-    // to the top7 ranking since they will never be in top7 again.
-
-    vector<song_num_t> bestSongsVec;
-    for (const auto &[song, pts]: bestSongs) {
-        bestSongsVec.emplace_back(song);
-    }
-
+    // Reject from top_songs rejected songs which have not made it
+    // to the top7 ranking since they will never be in top7 again
     for (auto it = top_songs.begin(); it != top_songs.end();) {
-        if (rejected_songs.contains(it->first)) {
-            auto iter = find(bestSongsVec.begin(), bestSongsVec.end(), it->first);
-            if (iter == bestSongsVec.end()) {
+        if (rejected_songs.contains(it->first)) { // already rejected
+            auto iter = find(last_top_call.begin(), last_top_call.end(),
+                             it->first);
+            if (iter == last_top_call.end()) { // not in current top standings
                 it = top_songs.erase(it);
             } else {
                 it++;
@@ -177,12 +172,13 @@ void top() {
 
 
 /* Input parsing */
+// Writes out the line in which error occurred
 void wrong_line() {
     cerr << "Error in line " << line_number << ": " << line << "\n";
 }
 
 void cast_votes() {
-    if (!open_voting) {
+    if (!open_voting) { // if NEW wasn't called yet
         wrong_line();
     } else {
         stringstream ss(line);
@@ -191,16 +187,18 @@ void cast_votes() {
         while (ss >> song) {
             if (song == 0 || song > current_max_song ||
                 rejected_songs.contains(song) || votes.contains(song)) {
+                // if error in conversion, song is rejected or already voted for
                 wrong_line();
                 return;
             }
             votes.emplace(song);
         }
         if (song == 0 || song == numeric_limits<song_num_t>::max()) {
+            // it means there was an error in a line
             wrong_line();
             return;
         }
-        vote(votes);
+        vote(votes); // voting process after assured everything is fine
     }
 }
 
@@ -213,7 +211,7 @@ void new_charts(stringstream &ss) {
         // something more in text, error in conversion or song number is too large
         wrong_line();
     } else {
-        if (open_voting) {
+        if (open_voting) { // if NEW was invoked before create a new chart
             summarize();
         }
         current_max_song = maximum;
@@ -231,14 +229,16 @@ void write_top_songs(stringstream &ss) {
 }
 
 void parse() {
+    ++line_number;
     stringstream ss(line);
     string word;
     ss >> word;
-    if (word == "NEW") {
+    if (word == "NEW") { // if NEW
         new_charts(ss);
-    } else if (word == "TOP") {
+    } else if (word == "TOP") { // if TOP
         write_top_songs(ss);
     } else if (!all_of(line.begin(), line.end(), isspace)) {
+        // if not NEW or TOP but not only whitespaces
         cast_votes();
     }
 }
@@ -246,7 +246,6 @@ void parse() {
 
 int main() {
     while (getline(cin, line)) {
-        ++line_number;
         parse();
     }
     return 0;
