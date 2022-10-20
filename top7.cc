@@ -1,10 +1,10 @@
 #include <iostream>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <limits>
 
 using std::pair;
 using std::string;
@@ -20,8 +20,6 @@ using std::numeric_limits;
 using std::cin;
 using std::cout;
 using std::cerr;
-
-// TODO w pliku alt jest wersja z interfejsem do testowania
 
 /* Type definitions */
 using line_t = string;
@@ -157,14 +155,10 @@ void top() {
 
     // reject from top_songs rejected songs which have not made it
     // to the top7 ranking since they will never be in top7 again.
-    // TODO do przemyślenia: czy powyższe oczyszczanie poprawi złożoność?
-    // Jak będzie dużo notowań z różnymi utworami to w top_songs będzie
-    // bardzo dużo elementów, więc z uwagi na tworzenie bestSongs za każdym
-    // razem przy wywołaniu TOP - tak
 
     vector<song_num_t> bestSongsVec;
-    for (auto it = bestSongs.begin(); it != bestSongs.end(); ++it) {
-        bestSongsVec.push_back(it->first);
+    for (const auto &[song, pts]: bestSongs) {
+        bestSongsVec.emplace_back(song);
     }
 
     for (auto it = top_songs.begin(); it != top_songs.end();) {
@@ -172,12 +166,10 @@ void top() {
             auto iter = find(bestSongsVec.begin(), bestSongsVec.end(), it->first);
             if (iter == bestSongsVec.end()) {
                 it = top_songs.erase(it);
-            }
-            else {
+            } else {
                 it++;
             }
-        }
-        else {
+        } else {
             it++;
         }
     }
