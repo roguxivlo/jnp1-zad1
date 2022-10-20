@@ -40,9 +40,9 @@ using song_list_t = vector<song_num_t>;
 
 /* Global variables */
 namespace {
-    constexpr size_t ranking_length = 7;
+    constexpr size_t ranking_length = 7; // length of ranking
     constexpr song_num_t max_song_number = 99999999;
-    song_num_t current_max_song = 0;
+    song_num_t current_max_song = 0; // max currently allowed song number
 
     charts_t current_chart;
     top_t top_songs;
@@ -53,18 +53,19 @@ namespace {
 
     song_list_t last_chart, last_top_call;
 
-    bool open_voting = false;
+    bool open_voting = false; // was there any NEW already
 
+    // Comparison struct for element ordering purposes
     struct cmp {
         bool operator()(const chart_elem_t &a, const chart_elem_t &b) const {
-            return a.second > b.second || (a.second == b.second &&
-                                           a.first < b.first);
+            return a.second > b.second ||
+                   (a.second == b.second && a.first < b.first);
         }
     };
 }
 
 
-/* Writing output */
+// Writes top7 songs either all-time or in new chart
 void writeTop7(const set<chart_elem_t, cmp> &bestSongs, const song_list_t &last) {
     int currentRank = 1;
 
@@ -91,7 +92,7 @@ void vote(const song_set_t &votes) {
 // Write out top 7 songs from chart, reject some songs, and reset chart.
 void summarize() {
     if (current_max_song > 0) {
-        // Get top7 songs from current_chart using set.
+        // Get top7 songs from current_chart using set
         set<chart_elem_t, cmp> bestSongs;
 
         for (auto const &[song, votes]: current_chart) {
@@ -101,17 +102,17 @@ void summarize() {
             }
         }
 
-        // Write out top 7 songs from chart.
+        // Write out top 7 songs from chart
         writeTop7(bestSongs, last_chart);
 
-        // Update top_songs.
+        // Update top_songs
         points_t points = ranking_length;
         for (const auto &[song, votes]: bestSongs) {
             top_songs[song] += points;
             points--;
         }
 
-        // Reject some songs.
+        // Reject some songs
         song_set_t bestSongsUS;
         for (const auto &[song, votes]: bestSongs) {
             bestSongsUS.emplace(song);
@@ -122,10 +123,10 @@ void summarize() {
             }
         }
 
-        // Reset the chart.
+        // Reset the chart
         current_chart.clear();
 
-        // Update last_chart.
+        // Update last_chart
         last_chart.clear();
         for (const auto &[song, votes]: bestSongs) {
             last_chart.emplace_back(song);
@@ -177,6 +178,7 @@ void wrong_line() {
     cerr << "Error in line " << line_number << ": " << line << "\n";
 }
 
+// Reads votes and casts them if no error is found
 void cast_votes() {
     if (!open_voting) { // if NEW wasn't called yet
         wrong_line();
@@ -186,7 +188,7 @@ void cast_votes() {
         song_num_t song;
         while (ss >> song) {
             if (song == 0 || song > current_max_song ||
-                rejected_songs.contains(song) || votes.contains(song)) {
+                    rejected_songs.contains(song) || votes.contains(song)) {
                 // if error in conversion, song is rejected or already voted for
                 wrong_line();
                 return;
@@ -198,17 +200,18 @@ void cast_votes() {
             wrong_line();
             return;
         }
-        vote(votes); // voting process after assured everything is fine
+        vote(votes);
     }
 }
 
+// Checks next chart max song number and outputs new chart according
 void new_charts(stringstream &ss) {
     string temp;
     song_num_t maximum;
     ss >> maximum; // reads max song number
     if (ss >> temp || maximum == 0 || maximum < current_max_song ||
-        maximum > max_song_number) {
-        // something more in text, error in conversion or song number is too large
+            maximum > max_song_number) {
+        // something more in line, error in conversion or song number is incorrect
         wrong_line();
     } else {
         if (open_voting) { // if NEW was invoked before create a new chart
@@ -219,15 +222,17 @@ void new_charts(stringstream &ss) {
     }
 }
 
+// Checks if nothing more is in line and invokes top chart
 void write_top_songs(stringstream &ss) {
     string temp;
-    if (ss >> temp) { // something more than TOP...
+    if (ss >> temp) { // something more than TOP in line
         wrong_line();
     } else {
         top();
     }
 }
 
+// Parses input (not via regex) and invokes suitable function
 void parse() {
     ++line_number;
     stringstream ss(line);
