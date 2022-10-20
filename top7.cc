@@ -53,7 +53,7 @@ namespace {
 
     song_list_t last_chart, last_top_call;
 
-    bool open_voting = false; // Was there any NEW already?
+    bool open_voting = false; // Remembers if there was already any NEW
 
     // Comparison struct for element ordering purposes.
     struct cmp {
@@ -65,26 +65,26 @@ namespace {
 }
 
 
-// Writes top7 songs either all-time or in new chart.
-void writeTop7(const set<chart_elem_t, cmp> &bestSongs, const song_list_t &last) {
-    int currentRank = 1;
+/* Algorithms. */
 
-    for (const auto &[song, pts]: bestSongs) {
+// Writes top7 songs either all-time or in new chart.
+void write_top7(const set<chart_elem_t, cmp> &best_songs,
+                const song_list_t &last) {
+    int current_rank = 1;
+
+    for (const auto &[song, pts] : best_songs) {
         auto it = find(last.begin(), last.end(), song);
         if (it != last.end()) {
-            auto previousRank = it - last.begin() + 1;
-            cout << song << " " << previousRank - currentRank << "\n";
+            auto previous_rank = it - last.begin() + 1;
+            cout << song << " " << previous_rank - current_rank << "\n";
         } else {
             cout << song << " -\n";
         }
-        currentRank++;
+        current_rank++;
     }
 }
 
-
-
-/* Algorithms. */
-// Write votes in chart and checks for correctness.
+// Write votes in chart.
 void vote(const song_set_t &votes) {
     for_each(votes.begin(), votes.end(), [](auto song) { ++current_chart[song]; });
 }
@@ -93,32 +93,32 @@ void vote(const song_set_t &votes) {
 void summarize() {
     if (current_max_song > 0) {
         // Get top7 songs from current_chart using set.
-        set<chart_elem_t, cmp> bestSongs;
+        set<chart_elem_t, cmp> best_songs;
 
-        for (auto const &[song, votes]: current_chart) {
-            bestSongs.emplace(song, votes);
-            if (bestSongs.size() > ranking_length) {
-                bestSongs.erase((--bestSongs.end()));
+        for (const auto &[song, votes] : current_chart) {
+            best_songs.emplace(song, votes);
+            if (best_songs.size() > ranking_length) {
+                best_songs.erase((--best_songs.end()));
             }
         }
 
         // Write out top 7 songs from chart.
-        writeTop7(bestSongs, last_chart);
+        write_top7(best_songs, last_chart);
 
         // Update top_songs.
         points_t points = ranking_length;
-        for (const auto &[song, votes]: bestSongs) {
+        for (const auto &[song, votes] : best_songs) {
             top_songs[song] += points;
             points--;
         }
 
         // Reject some songs.
-        song_set_t bestSongsUS;
-        for (const auto &[song, votes]: bestSongs) {
-            bestSongsUS.emplace(song);
+        song_set_t best_songs_set;
+        for (const auto &[song, votes] : best_songs) {
+            best_songs_set.emplace(song);
         }
-        for (auto song: last_chart) {
-            if (!bestSongsUS.contains(song)) {
+        for (auto song : last_chart) {
+            if (!best_songs_set.contains(song)) {
                 rejected_songs.emplace(song);
             }
         }
@@ -128,7 +128,7 @@ void summarize() {
 
         // Update last_chart.
         last_chart.clear();
-        for (const auto &[song, votes]: bestSongs) {
+        for (const auto &[song, votes] : best_songs) {
             last_chart.emplace_back(song);
         }
     }
@@ -138,7 +138,7 @@ void summarize() {
 void top() {
     // Get top7 songs from top_songs using set.
     set<top_elem_t, cmp> best_songs;
-    for (const auto &[song, points]: top_songs) {
+    for (const auto &[song, points] : top_songs) {
         best_songs.emplace(song, points);
         if (best_songs.size() > ranking_length) {
             best_songs.erase((--best_songs.end()));
@@ -146,11 +146,11 @@ void top() {
     }
 
     // Write top songs.
-    writeTop7(best_songs, last_top_call);
+    write_top7(best_songs, last_top_call);
 
     // Update last_top_call array.
     last_top_call.clear();
-    for (const auto &[song, pts]: best_songs) {
+    for (const auto &[song, pts] : best_songs) {
         last_top_call.emplace_back(song);
     }
 
@@ -173,6 +173,7 @@ void top() {
 
 
 /* Input parsing. */
+
 // Writes out the line in which error occurred.
 void wrong_line() {
     cerr << "Error in line " << line_number << ": " << line << "\n";
@@ -188,7 +189,7 @@ void cast_votes() {
         song_num_t song;
         while (ss >> song) {
             if (song == 0 || song > current_max_song ||
-                    rejected_songs.contains(song) || votes.contains(song)) {
+                rejected_songs.contains(song) || votes.contains(song)) {
                 // If error in conversion occurs, song is rejected or
                 // already voted for.
                 wrong_line();
@@ -211,7 +212,7 @@ void new_charts(stringstream &ss) {
     song_num_t maximum;
     ss >> maximum; // Reads max song number.
     if (ss >> temp || maximum == 0 || maximum < current_max_song ||
-            maximum > max_song_number) {
+        maximum > max_song_number) {
         // Something more in line, error in conversion or song number
         // is incorrect.
         wrong_line();
